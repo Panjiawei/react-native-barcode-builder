@@ -1,10 +1,71 @@
 import React, { PureComponent } from 'react';
-import { View, StyleSheet, ART, Text } from 'react-native';
+import { View,AppState ,StyleSheet, ART, Text } from 'react-native';
 import PropTypes from 'prop-types';
 
 import barcodes from 'jsbarcode/src/barcodes';
 
 const { Surface, Shape } = ART;
+
+const uuid = () => Math.random().toString(36).substring(2) + (new Date()).getTime().toString(36);
+
+class Surfaces extends React.Component<ARTSurfaceProps> {
+  constructor(props) {
+    super(props);
+
+    const propKey = props.key || 'surface';
+
+    this.state = {
+      key: `${propKey}-${uuid()}`,
+      propKey,
+      appState: AppState.currentState,
+    };
+  }
+
+  componentDidMount() {
+    AppState.addEventListener('change', this.handleAppStateChange);
+  }
+
+  componentWillUnmount() {
+    AppState.removeEventListener('change', this.handleAppStateChange);
+  }
+
+  static getDerivedStateFromProps(nextProps, prevState) {
+    const propKey = nextProps.key || 'surface';
+
+    if (propKey !== prevState.propKey) {
+      return {
+        key: `${propKey}-${uuid()}`,
+        propKey,
+      };
+    }
+
+    return null;
+  }
+
+  handleAppStateChange = (nextAppState) => {
+    const {
+      appState,
+      propKey,
+    } = this.state;
+
+    if (appState.match(/inactive|background/) && nextAppState === 'active') {
+      this.setState({ appState: nextAppState, key: `${propKey}-${uuid()}` });
+    } else if (appState === 'active' && nextAppState.match(/inactive|background/)) {
+      this.setState({ appState: nextAppState });
+    }
+  };
+
+  render() {
+    const { key } = this.state;
+
+    return (
+        <Surface
+    key={key}
+    {...this.props}
+    />
+  );
+  }
+}
 
 export default class Barcode extends PureComponent {
   static propTypes = {
@@ -88,10 +149,10 @@ export default class Barcode extends PureComponent {
         barWidth++;
       } else if (barWidth > 0) {
         rects[rects.length] = this.drawRect(
-          x - options.width * barWidth,
-          yFrom,
-          options.width * barWidth,
-          options.height
+            x - options.width * barWidth,
+            yFrom,
+            options.width * barWidth,
+            options.height
         );
         barWidth = 0;
       }
@@ -100,10 +161,10 @@ export default class Barcode extends PureComponent {
     // Last draw is needed since the barcode ends with 1
     if (barWidth > 0) {
       rects[rects.length] = this.drawRect(
-        x - options.width * (barWidth - 1),
-        yFrom,
-        options.width * barWidth,
-        options.height
+          x - options.width * (barWidth - 1),
+          yFrom,
+          options.width * barWidth,
+          options.height
       );
     }
 
@@ -167,15 +228,15 @@ export default class Barcode extends PureComponent {
       backgroundColor: this.props.background
     };
     return (
-      <View style={[styles.svgContainer, backgroundStyle]}>
-        <Surface height={this.props.height} width={this.state.barCodeWidth}>
-          <Shape d={this.state.bars} fill={this.props.lineColor} />
-        </Surface>
-        { typeof(this.props.text) != 'undefined' &&
-          <Text style={{color: this.props.textColor, width: this.state.barCodeWidth, textAlign: 'center'}} >{this.props.text}</Text>
-        }
-      </View>
-    );
+        <View style={[styles.svgContainer, backgroundStyle]}>
+  <Surfaces height={this.props.height} width={this.state.barCodeWidth}>
+        <Shape d={this.state.bars} fill={this.props.lineColor} />
+    </Surfaces>
+    { typeof(this.props.text) != 'undefined' &&
+    <Text style={{color: this.props.textColor, width: this.state.barCodeWidth, textAlign: 'center'}} >{this.props.text}</Text>
+    }
+  </View>
+  );
   }
 }
 
